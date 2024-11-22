@@ -9,8 +9,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from .audio import HOP_LENGTH, SAMPLE_RATE, TOKENS_PER_SECOND
-from .tokenizer import Tokenizer
+from audio import HOP_LENGTH, SAMPLE_RATE, TOKENS_PER_SECOND
+from tokenizer import Tokenizer
 
 if TYPE_CHECKING:
     from .model import Whisper
