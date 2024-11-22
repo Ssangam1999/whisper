@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import tqdm
 
-from .audio import (
+from audio import (
     FRAMES_PER_SECOND,
     HOP_LENGTH,
     N_FRAMES,
@@ -17,10 +17,11 @@ from .audio import (
     log_mel_spectrogram,
     pad_or_trim,
 )
-from .decoding import DecodingOptions, DecodingResult
-from .timing import add_word_timestamps
-from .tokenizer import LANGUAGES, TO_LANGUAGE_CODE, get_tokenizer
-from .utils import (
+from audio import record_audio
+from decoding import DecodingOptions, DecodingResult
+from timing import add_word_timestamps
+from tokenizer import LANGUAGES, TO_LANGUAGE_CODE, get_tokenizer
+from utils import (
     exact_div,
     format_timestamp,
     get_end,
@@ -32,7 +33,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from .model import Whisper
+    from model import Whisper
 
 
 def transcribe(
@@ -513,7 +514,7 @@ def transcribe(
 
 
 def cli():
-    from . import available_models
+    from __init__ import available_models
 
     def valid_model_name(name):
         if name in available_models() or os.path.exists(name):
@@ -524,16 +525,16 @@ def cli():
 
     # fmt: off
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("audio", nargs="+", type=str, help="audio file(s) to transcribe")
-    parser.add_argument("--model", default="turbo", type=valid_model_name, help="name of the Whisper model to use")
-    parser.add_argument("--model_dir", type=str, default=None, help="the path to save model files; uses ~/.cache/whisper by default")
-    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu", help="device to use for PyTorch inference")
-    parser.add_argument("--output_dir", "-o", type=str, default=".", help="directory to save the outputs")
+    parser.add_argument("--audio", nargs=1,default=None, type=str, help="audio file(s) to transcribe")
+    parser.add_argument("--model", default="tiny", type=valid_model_name, help="name of the Whisper model to use")
+    parser.add_argument("--model_dir", type=str, default='/home/vertex/Downloads/model', help="the path to save model files; uses ~/.cache/whisper by default")
+    parser.add_argument("--device", default="cpu" if torch.cuda.is_available() else "cpu", help="device to use for PyTorch inference")
+    parser.add_argument("--output_dir", "-o", type=str, default="output", help="directory to save the outputs")
     parser.add_argument("--output_format", "-f", type=str, default="all", choices=["txt", "vtt", "srt", "tsv", "json", "all"], help="format of the output file; if not specified, all available formats will be produced")
     parser.add_argument("--verbose", type=str2bool, default=True, help="whether to print out the progress and debug messages")
 
     parser.add_argument("--task", type=str, default="transcribe", choices=["transcribe", "translate"], help="whether to perform X->X speech recognition ('transcribe') or X->English translation ('translate')")
-    parser.add_argument("--language", type=str, default=None, choices=sorted(LANGUAGES.keys()) + sorted([k.title() for k in TO_LANGUAGE_CODE.keys()]), help="language spoken in the audio, specify None to perform language detection")
+    parser.add_argument("--language", type=str, default="en", choices=sorted(LANGUAGES.keys()) + sorted([k.title() for k in TO_LANGUAGE_CODE.keys()]), help="language spoken in the audio, specify None to perform language detection")
 
     parser.add_argument("--temperature", type=float, default=0, help="temperature to use for sampling")
     parser.add_argument("--best_of", type=optional_int, default=5, help="number of candidates when sampling with non-zero temperature")
@@ -564,13 +565,21 @@ def cli():
     parser.add_argument("--hallucination_silence_threshold", type=optional_float, help="(requires --word_timestamps True) skip silent periods longer than this threshold (in seconds) when a possible hallucination is detected")
     # fmt: on
 
-    args = parser.parse_args().__dict__
+
+    # args = parser.parse_args().__dict__
+    args = parser.parse_args()
     model_name: str = args.pop("model")
     model_dir: str = args.pop("model_dir")
     output_dir: str = args.pop("output_dir")
     output_format: str = args.pop("output_format")
     device: str = args.pop("device")
-    os.makedirs(output_dir, exist_ok=True)
+    # Handle the case where no audio file is provided
+    if args.audio is None:
+        print("No audio file provided. Recording live audio...")
+        audio_path = record_audio()  # Call the record_audio function
+    else:
+        audio_path = args.audio[0]
+    os.makedirs(args.output_dir, exist_ok=True)
 
     if model_name.endswith(".en") and args["language"] not in {"en", "English"}:
         if args["language"] is not None:
@@ -588,9 +597,10 @@ def cli():
     if (threads := args.pop("threads")) > 0:
         torch.set_num_threads(threads)
 
-    from . import load_model
+    from __init__ import load_model
 
-    model = load_model(model_name, device=device, download_root=model_dir)
+    # model = load_model(model_name, device=device, download_root=model_dir)
+    model = load_model(args.model, device=args.device, download_root=args.model_dir)
 
     writer = get_writer(output_format, output_dir)
     word_options = [
@@ -608,13 +618,25 @@ def cli():
     if args["max_words_per_line"] and args["max_line_width"]:
         warnings.warn("--max_words_per_line has no effect with --max_line_width")
     writer_args = {arg: args.pop(arg) for arg in word_options}
-    for audio_path in args.pop("audio"):
-        try:
-            result = transcribe(model, audio_path, temperature=temperature, **args)
-            writer(result, audio_path, **writer_args)
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Skipping {audio_path} due to {type(e).__name__}: {str(e)}")
+    # for audio_path in args.pop("audio"):
+    #     try:
+    #         result = transcribe(model, audio_path, temperature=temperature, **args)
+    #         writer(result, audio_path, **writer_args)
+    #     except Exception as e:
+    #         traceback.print_exc()
+    #         print(f"Skipping {audio_path} due to {type(e).__name__}: {str(e)}")
+    # Transcribe the audio file
+    try:
+        print(f"Transcribing audio file: {audio_path}")
+        result = transcribe(model, audio_path, temperature=0.0, verbose=args.verbose)
+        print("Transcription completed:")
+        print(result["text"])
+
+        # Save the results
+        writer = get_writer(args.output_format, args.output_dir)
+        writer(result, audio_path)
+    except Exception as e:
+        print(f"Error during transcription: {e}")
 
 
 if __name__ == "__main__":
