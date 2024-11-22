@@ -18,7 +18,7 @@ from audio import (
     pad_or_trim,
 )
 from audio import record_audio
-file_path = record_audio()
+# file_path = record_audio()
 from decoding import DecodingOptions, DecodingResult
 from timing import add_word_timestamps
 from tokenizer import LANGUAGES, TO_LANGUAGE_CODE, get_tokenizer
@@ -526,7 +526,7 @@ def cli():
 
     # fmt: off
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--audio", nargs='+',default=[file_path], type=str, help="audio file(s) to transcribe")
+    parser.add_argument("--audio", nargs='+',default=[record_audio()],type=str, help="audio file(s) to transcribe")
     parser.add_argument("--model", default="tiny", type=valid_model_name, help="name of the Whisper model to use")
     parser.add_argument("--model_dir", type=str, default='/home/vertex/Downloads/model', help="the path to save model files; uses ~/.cache/whisper by default")
     parser.add_argument("--device", default="cpu" if torch.cuda.is_available() else "cpu", help="device to use for PyTorch inference")
@@ -580,6 +580,7 @@ def cli():
     #     audio_path = record_audio()  # Call the record_audio function
     # else:
     #     audio_path = args.audio[0]
+
     os.makedirs(output_dir, exist_ok=True)
 
     if model_name.endswith(".en") and args["language"] not in {"en", "English"}:
