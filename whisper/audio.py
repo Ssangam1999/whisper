@@ -30,6 +30,10 @@ FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
 TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
 
 def record_audio():
+    """
+    Takes voice input from user
+    returns file_path of the audio
+    """
     p = pyaudio.PyAudio()
     stream = p.open(
         format=FORMAT,
@@ -41,7 +45,7 @@ def record_audio():
 
     frames = []
     seconds = 10  # Duration of recording
-    print("Start speaking")
+    print("Please give your voice input")
     for _ in range(0, int(SAMPLE_RATE / CHUNK_LENGTH * seconds)):
         data = stream.read(CHUNK_LENGTH)
         frames.append(data)
