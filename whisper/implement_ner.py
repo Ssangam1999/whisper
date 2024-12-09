@@ -8,17 +8,18 @@ from datetime import datetime
 from whisper.transcribe import cli
 
 
+
 # Function to extract entities from text
 def extract_entities(text, nlp_model):
-    '''
+    """
     Takes text and nlp_model as input.
     Process it to get person money and organisation
     returns persons,money,orgs
-    '''
+    """
     doc = nlp_model(text)
     persons = [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
-    money = [ent.text for ent in doc.ents if ent.label_ == "MONEY"]
-    orgs = [ent.text for ent in doc.ents if ent.label_ == "ORG"]
+    money = [ent.text for ent in doc.ents  if ent.label_ == "MONEY" ]
+    orgs = [ent.text for ent in doc.ents if ent.label_ == "ORG"  ]
     return persons, money, orgs
 
 # Function to save NER output to a JSON file
@@ -29,9 +30,9 @@ def save_ner_to_json(persons, money, orgs, output_path):
     """
     # Create a dictionary to hold the data
     ner_output = {
-        "person": persons[0],
-        "amount": money[0],
-        "organization": orgs[0]
+        "person": persons[0] if persons else "Unknown",
+        "amount": money[0] if money else "Unknown",
+        "organization": orgs[0] if orgs else "Unknown"
     }
 
     # Write the dictionary to a JSON file
@@ -133,19 +134,19 @@ def process_check(persons, money, orgs):
 
 if __name__ == "__main__":
     nlp = spacy.load("en_core_web_trf")
-    text = cli()
+    text = cli(['/home/vertex/Documents/vertex_projects/whisper/CHASE.mp3'])
     print("Transcribed Text:", text)
 
-    # # Extract entities
-    persons, money, orgs = extract_entities(text, nlp)
-    # # Print extracted entities
-    print("Persons:", persons)
-    print("Money:", money)
-    print("Organizations:", orgs)
-    output_path = f'/home/vertex/Documents/vertex_projects/whisper/whisper/output/{uuid.uuid4()}.json'
-
-    #save json
-    save_ner_to_json(persons, money, orgs, output_path)
+    # # # Extract entities
+    # persons, money, orgs = extract_entities(text, nlp)
+    # # # Print extracted entities
+    # print("Persons:", persons)
+    # print("Money:", money)
+    # print("Organizations:", orgs)
+    # output_path = f'/home/vertex/Documents/vertex_projects/whisper/whisper/output/{uuid.uuid4()}.json'
+    #
+    # #save json
+    # save_ner_to_json(persons, money, orgs, output_path)
 
 
     # Process the check
